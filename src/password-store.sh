@@ -99,6 +99,11 @@ set_gpg_recipients() {
 		exit 1
 	fi
 
+	gpg --verify "$current".asc || {
+		die "The gpg-id list is signed by an untrusted signature. Verify and sign/set trust accordingly."
+	}
+	yesno "The gpg-id list has been signed by the above trusted signature. Do you want to continue? [Y/n]"
+
 	local gpg_id
 	while read -r gpg_id; do
 		gpg_trust_check $gpg_id
@@ -321,6 +326,7 @@ cmd_init() {
 		mkdir -v -p "$PREFIX/$id_path"
 		printf "%s\n" "$@" > "$gpg_id"
 		local id_print="$(printf "%s, " "$@")"
+		gpg --sign --armor "$gpg_id"
 		echo "Password store initialized for ${id_print%, }"
 		git_add_file "$gpg_id" "Set GPG id to ${id_print%, }."
 	fi
