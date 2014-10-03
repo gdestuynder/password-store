@@ -47,6 +47,29 @@ die() {
 	echo "$@" >&2
 	exit 1
 }
+gpg_trust_check() {
+	# Key output format:
+	# pub   4096R/FFFFFFFF 2011-08-26
+	# uid       [  trust  ] Joe Bob <jbob@mozilla.com>
+	# sub   4096R/FFFFFFFF 2011-08-26
+
+	local trust uid
+
+	uid=$(gpg --list-keys "$1" | grep ^uid | cut -d ']' -f2-)
+	trust=$(gpg --list-keys "$1" | grep ^uid | awk -F '[\]\[]' '{print $2}' 2>/dev/null | tr -d ' ' )
+	[[ $trust == 'unknown' ]] && {
+		die "Key $1 trust is not known - cannot continue. Verify and sign or set trust."
+	}
+	[[ $trust == 'undef' ]] && {
+		die "Key $1 has no trust set - cannot continue. Verify and sign or set trust."
+	}
+	[[ $trust == 'revoked' ]] && {
+		die "Key $1 is revoked. Refusing to use key!"
+	}
+	[[ $trust == 'expired' ]] && {
+		die "Key $1 is expired. Refusing to use key!"
+	}
+}
 set_gpg_recipients() {
 	GPG_RECIPIENT_ARGS=( )
 	GPG_RECIPIENTS=( )
@@ -78,6 +101,7 @@ set_gpg_recipients() {
 
 	local gpg_id
 	while read -r gpg_id; do
+		gpg_trust_check $gpg_id
 		GPG_RECIPIENT_ARGS+=( "-r" "$gpg_id" )
 		GPG_RECIPIENTS+=( "$gpg_id" )
 	done < "$current"
