@@ -33,6 +33,9 @@ git_commit() {
 	[[ -d $GIT_DIR ]] || return
 	[[ $(git config --bool --get pass.signcommits) == "true" ]] && sign="-S"
 	git commit $sign -m "$1"
+	[[ $(git config --bool --get pass.autopush) == "true" ]] && {
+		git push
+	}
 }
 yesno() {
 	[[ -t 0 ]] || return 0
